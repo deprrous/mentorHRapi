@@ -5,9 +5,11 @@ const paginate = require("../utils/paginate");
 const crypto = require("crypto");
 
 exports.createUser = asyncHandler(async (req, res, next) => {
+   const user = await User.create(req.body);
+   if (!user) throw new myError("something is wrong", 403);
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
    });
 });
 exports.getUsers = asyncHandler(async (req, res, next) => {
@@ -25,44 +27,94 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
       .limit(pagination.limit);
 });
 exports.getUser = asyncHandler(async (req, res, next) => {
+   const user = await User.findById(req.params.id);
+   if (!user) throw new myError(`User not found id with ${req.params.id}`);
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
    });
 });
-exports.updateUsers = asyncHandler(async (req, res, next) => {
+exports.updateUser = asyncHandler(async (req, res, next) => {
+   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+   });
+   if (!user) {
+      throw new myError(`User not found id with ${req.params.id}`, 400);
+   }
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
    });
 });
 exports.deleteUser = asyncHandler(async (req, res, next) => {
+   const user = await User.findById(req.params.id);
+   if (!user) {
+      throw new myError(`User not found id with ${req.params.id}`, 400);
+   }
+
+   await user.deleteOne();
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
    });
 });
 exports.register = asyncHandler(async (req, res, next) => {
+   const user = await User.create(req.body);
+   if (!user) {
+      throw new myError("something is wrong", 403);
+   }
+   const token = user.getJWT();
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
+      token,
    });
 });
 exports.login = asyncHandler(async (req, res, next) => {
+   const { email, password } = req.body;
+   if (!email || !password)
+      throw new myError("Нууц үг эсвэл И-мэйл талбар хоосон байна", 400);
+   const user = await User.findOne({ email: email }).select("+password");
+   if (!user) throw new myError(`User not found email with ${email}`);
+   const match = user.checkPass(password);
+   if (!match) {
+      throw new myError("Нууц үг эсвэл И-мэйл талбар буруу байна", 400);
+   }
+
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
+      token: user.getJWT(),
    });
 });
 exports.forgotPassword = asyncHandler(async (req, res, next) => {
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
    });
 });
 exports.resetPassword = asyncHandler(async (req, res, next) => {
    res.status(200).json({
       succes: true,
-      data: user,
+      user,
+   });
+});
+
+exports.changePassword = asyncHandler(async (req, res, next) => {
+   const { currentPassword, newPassword } = req.body;
+   if (!currentPassword || !newPassword)
+      throw new myError("Хоосон талбар илгээгээд байна аа хө", 402);
+
+   const user = await User.findOne({ _id: req.userId }).select("+password");
+   const match = await user.checkPass(currentPassword);
+   if (!match) {
+      throw new myError("Password is not valid!", 402);
+   }
+   user.password = newPassword;
+   user.save();
+   res.status(200).json({
+      succes: true,
+      user: user,
    });
 });

@@ -48,12 +48,12 @@ const UserSchema = new mongoose.Schema(
    { timestamps: true },
 );
 
-UserSchema.pre("save", async function () {
-   // Nuuts ug oorchlogdoogui bol daraachiin middleware luu shiljine
-   if (!this.isModified(this.password)) {
+UserSchema.pre("save", async function (next) {
+   if (this.isModified("password")) {
       const salt = await bcrypt.genSalt(12);
       this.password = await bcrypt.hash(this.password, salt);
    }
+   next();
 });
 
 UserSchema.methods.getJWT = function () {
