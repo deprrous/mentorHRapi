@@ -38,6 +38,10 @@ const UserSchema = new mongoose.Schema(
          enum: ["member"],
          default: "member",
       },
+      class: {
+         type: mongoose.Schema.ObjectId,
+         ref: "Class",
+      },
       dateOfJoining: {
          type: Date,
          default: Date.now,
@@ -81,14 +85,14 @@ UserSchema.methods.checkPass = async function (input) {
    return match;
 };
 
-UserSchema.methods.generatePasswordResetToken = async function () {
-   const resetToken = crypto.randomBytes(30).toString("hex");
-   this.resetPasswordToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
-   this.resetPasswordExpire = Date.now() + 10 * 60000;
-   return resetToken;
-};
+// UserSchema.methods.generatePasswordResetToken = async function () {
+//    const resetToken = crypto.randomBytes(30).toString("hex");
+//    this.resetPasswordToken = crypto
+//       .createHash("sha256")
+//       .update(resetToken)
+//       .digest("hex");
+//    this.resetPasswordExpire = Date.now() + 10 * 60000;
+//    return resetToken;
+// };
 
 module.exports = mongoose.model("User", UserSchema);

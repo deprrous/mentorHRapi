@@ -12,6 +12,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
       user,
    });
 });
+// not yet
 exports.getUsers = asyncHandler(async (req, res, next) => {
    const sort = req.query.sort;
    const select = req.query.select;
@@ -25,6 +26,14 @@ exports.getUsers = asyncHandler(async (req, res, next) => {
       .sort(sort)
       .skip(pagination.start - 1)
       .limit(pagination.limit);
+   if (users.length === 0) {
+      throw new myError("Хэрэглэгч бүртгэгдээгүй байна.", 404);
+   }
+   res.status(200).json({
+      succes: true,
+      data: users,
+      pagination,
+   });
 });
 exports.getUser = asyncHandler(async (req, res, next) => {
    const user = await User.findById(req.params.id);
@@ -35,13 +44,18 @@ exports.getUser = asyncHandler(async (req, res, next) => {
    });
 });
 exports.updateUser = asyncHandler(async (req, res, next) => {
-   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-   });
+   const user = await User.findById(req.params.id);
    if (!user) {
       throw new myError(`User not found id with ${req.params.id}`, 400);
    }
+   if (req.params.id !== req.userId && req.userRole !== "admin") {
+      throw new myError(`Уучлаарай та хэрэглэгчийг өөрчлөх эрхгүй байна.`, 400);
+   }
+
+   Object.keys(req.body).forEach((key) => {
+      user[key] = req.body[key];
+   });
+   await user.save();
    res.status(200).json({
       succes: true,
       user,
@@ -52,6 +66,10 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
    if (!user) {
       throw new myError(`User not found id with ${req.params.id}`, 400);
    }
+   if (req.params.id !== req.userId && req.userRole !== "admin") {
+      throw new myError(`Уучлаарай та хэрэглэгчийг устгах эрхгүй байна.`, 400);
+   }
+   await user.deleteOne();
 
    await user.deleteOne();
    res.status(200).json({
@@ -78,6 +96,7 @@ exports.login = asyncHandler(async (req, res, next) => {
    const user = await User.findOne({ email: email }).select("+password");
    if (!user) throw new myError(`User not found email with ${email}`);
    const match = user.checkPass(password);
+   console.log(user);
    if (!match) {
       throw new myError("Нууц үг эсвэл И-мэйл талбар буруу байна", 400);
    }
@@ -107,6 +126,7 @@ exports.changePassword = asyncHandler(async (req, res, next) => {
       throw new myError("Хоосон талбар илгээгээд байна аа хө", 402);
 
    const user = await User.findOne({ _id: req.userId }).select("+password");
+   console.log(user);
    const match = await user.checkPass(currentPassword);
    if (!match) {
       throw new myError("Password is not valid!", 402);
